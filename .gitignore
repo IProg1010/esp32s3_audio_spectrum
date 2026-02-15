@@ -1,0 +1,19 @@
+# Временные файлы сборки (самое важное)
+build/
+sdkconfig
+sdkconfig.old
+
+# Зависимости и компоненты (скачиваются через idf.py add-dependency)
+managed_components/
+dependencies.lock
+
+# Временные файлы редакторов и системы
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.bak
+
+# Логи и дампы памяти
+*.log
+core
