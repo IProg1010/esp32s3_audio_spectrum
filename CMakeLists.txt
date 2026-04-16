@@ -8,4 +8,3 @@ add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-include;cmath>")
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(audio_spectrum)
 
-add_subdirectory(slave_controller)

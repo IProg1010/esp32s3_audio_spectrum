@@ -16,6 +16,8 @@ __attribute__((used)) void TIM2_IRQHandler_real(void)
     }
 }
 
+
+void delayTimerInit();
 void delayInit(void)
 {
     delayTimerInit();

@@ -1,7 +1,7 @@
 #include "encoder.h"
 #include "debug.h"
-#include "ch32v30x_tim.h"
-#include "ch32v30x_gpio.h"
+#include "ch32v20x_tim.h"
+#include "ch32v20x_gpio.h"
 #include "math.h"
 
 
@@ -15,12 +15,12 @@ uint16_t enc_temp_cnt = 0;
 
 enum EncoderDir enc_dir = dirNot;
 
-void TIM8_Encoder_Init();
+void TIM2_Encoder_Init();
 
 void initEncoder()
 {
     encoder_cnt = 0;
-    TIM8_Encoder_Init();
+    TIM2_Encoder_Init();
 }
 
 uint16_t getEncoderCnt()
@@ -32,7 +32,7 @@ uint16_t getEncoderCnt()
 
 uint16_t checkEncoderCnt()
 {
-    return TIM8->ATRLR;
+    return TIM2->ATRLR;
 }
 
 uint8_t getSpeed()
@@ -47,7 +47,7 @@ enum EncoderDir getEncoderDirection()
 
 void updateEncoder()
 {
-    encoder_cnt = TIM8->CNT;
+    encoder_cnt = TIM2->CNT;
     if(encoder_cnt > encoder_last)
     {
         if(encoder_cnt > 1500 && encoder_last < 100)
@@ -168,10 +168,10 @@ void GPIO_PinRemapConfigTest(uint32_t GPIO_Remap, FunctionalState NewState)
     }
 }*/
 
-void TIM8_Encoder_Init()
+void TIM2_Encoder_Init()
 {
-    //#undef GPIO_Remap_TIM8
-    //#define GPIO_Remap_TIM8             ((uint32_t)0x80130004)  /* TIM8 Alternate Function mapping */
+    //#undef GPIO_Remap_TIM2
+    //#define GPIO_Remap_TIM2             ((uint32_t)0x80130004)  /* TIM2 Alternate Function mapping */
     
     TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
     TIM_ICInitTypeDef TIM_ICInitStructure;
@@ -180,18 +180,18 @@ void TIM8_Encoder_Init()
 
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM8, ENABLE);
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
 
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
     GPIO_Init(GPIOB, &GPIO_InitStructure);
 
-    GPIO_PinRemapConfig(GPIO_Remap_TIM8, ENABLE);
-    GPIO_PinRemapConfig(GPIO_Remap_TIM8, DISABLE);
-    GPIO_PinRemapConfig(GPIO_Remap_TIM8, ENABLE);
-    //GPIO_PinRemapConfigTest(GPIO_Remap_TIM8, ENABLE);
+    /*GPIO_PinRemapConfig(GPIO_Remap_TIM2, ENABLE);
+    GPIO_PinRemapConfig(GPIO_Remap_TIM2, DISABLE);
+    GPIO_PinRemapConfig(GPIO_Remap_TIM2, ENABLE);
+    //GPIO_PinRemapConfigTest(GPIO_Remap_TIM2, ENABLE);
     //GPIO_PinRemapConfigTest(GPIO_FullRemap_TIM9, ENABLE);
-    //GPIO_PinRemapConfig(GPIO_FullRemap_TIM9, ENABLE);
+    //GPIO_PinRemapConfig(GPIO_FullRemap_TIM9, ENABLE);*/
     //AFIO->PCFR1 |= 0x00000800; 
 
     TIM_TimeBaseStructInit(&TIM_TimeBaseStructure);
@@ -200,9 +200,9 @@ void TIM8_Encoder_Init()
     TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
     TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
     TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
-    TIM_TimeBaseInit(TIM8, &TIM_TimeBaseStructure);
+    TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
 
-    TIM_EncoderInterfaceConfig(TIM8, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising , TIM_ICPolarity_Rising);
+    TIM_EncoderInterfaceConfig(TIM2, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising , TIM_ICPolarity_Rising);
 
     TIM_ICStructInit(&TIM_ICInitStructure);
     
@@ -212,7 +212,7 @@ void TIM8_Encoder_Init()
     TIM_ICInitStructure.TIM_ICPrescaler = TIM_ICPSC_DIV1;
     TIM_ICInitStructure.TIM_ICFilter = 16;
 
-    TIM_ICInit(TIM8, &TIM_ICInitStructure);
+    TIM_ICInit(TIM2, &TIM_ICInitStructure);
 
     /*NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
@@ -223,9 +223,9 @@ void TIM8_Encoder_Init()
 
     /*TIM_ClearFlag(TIM3, TIM_FLAG_Update);
     TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);*/
-    //GPIO_PinRemapConfig(GPIO_Remap_TIM8, ENABLE);
+    //GPIO_PinRemapConfig(GPIO_Remap_TIM2, ENABLE);
     //AFIO->PCFR2 |= 0x4; 
-    TIM_SetCounter(TIM8, 800);
-    TIM_Cmd(TIM8, ENABLE);
-    //TIM8->CNT = 1600;
+    TIM_SetCounter(TIM2, 800);
+    TIM_Cmd(TIM2, ENABLE);
+    //TIM2->CNT = 1600;
 }

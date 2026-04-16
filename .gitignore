@@ -1,5 +1,6 @@
 # Временные файлы сборки (самое важное)
 build/
+*build*/
 sdkconfig
 sdkconfig.old
 

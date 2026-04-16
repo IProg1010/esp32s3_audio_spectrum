@@ -2,7 +2,7 @@
 #define DI_DO_CONTROL_H
 
 #include <stdint.h>
-#include "ch32v30x_gpio.h"
+#include "ch32v20x_gpio.h"
 
 
 #ifdef __cplusplus

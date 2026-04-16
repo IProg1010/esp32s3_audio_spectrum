@@ -4,26 +4,30 @@ cmake_minimum_required(VERSION 3.20)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # Path to toolchain file. This one has to be before 'project()' below
-set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/toolchain.cmake)
-set(GIT_HEAD_FILE "${CMAKE_CURRENT_SOURCE_DIR}/.git/HEAD")
+if(CMAKE_HOST_WIN32)
+	message("Build in Windows host")
+	set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/toolchain.cmake.win)
+	set(ch32tools "A:/work/ch32/ch32tools/ch32v307/C++/Use MRS Create C++ project-example/CH32V307VCT6")
+#elseif(CMAKE_HOST_APPLE)
+#message("Host is macOS.")
+elseif(CMAKE_HOST_UNIX)
+	message("Build for Linux host")
+	set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/toolchain.cmake)
+	set(ch32tools "/home/batyrshin/secdisk2/work/ch32/ch32tools/ch32v307/C++/Use MRS Create C++ project-example/CH32V307VCT6")
+endif()
 
-project(dtmf C CXX ASM)
-
-#set(PATH_TO_SDK ${CMAKE_SOURCE_DIR}/../../cmsis CACHE PATH "Path to foled with sdk for chip of stm32f1X")
+project(slave_controller C CXX ASM)
 
 set(EXECUTABLE ${PROJECT_NAME}.elf)
 set(LINKER_FILE ${CMAKE_SOURCE_DIR}/memory_link.ld)
 
-set(CMAKE_CXX_STANDARD 11)
-#set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_ASM_FLAGS "-x assembler-with-cpp")
-#set_property(SOURCE startup_stm32f103xb.s APPEND PROPERTY COMPILE_OPTIONS "-x" "assembler-with-cpp")
 
 message("PAth to ${PATH_TO_SDK}")
-message("Cmake source dir" ${CMAKE_SOURCE_DIR})
+message("Cmake source dir" ${CMAKE_CURRENT_SOURCE_DIR})
 
-set(ch32tools "/home/batyrshin/work/ch32/ch32tools/ch32v20x/C++/Use\ MRS\ Create\ C++\ project-example/CH32V203C8T6++")
+set(ch32tools "F:/work/ch32/ch32tools/ch32v20x/C++/Use MRS Create C++ project-example/CH32V203C8T6++")
 set(ch32v203core "Core")
 set(ch32v203debug "Debug")
 set(ch32v203peripheral "Peripheral")
@@ -32,15 +36,10 @@ set(ch32v203user "User")
 
 # List of source files
 set(SOURC_FILES 
-	${CMAKE_SOURCE_DIR}/main.cpp
-	${CMAKE_SOURCE_DIR}/delay.c
-	${CMAKE_SOURCE_DIR}/periph/servo.c
-	${CMAKE_SOURCE_DIR}/periph/motor.c
-	${CMAKE_SOURCE_DIR}/periph/gpio.c
-	${CMAKE_SOURCE_DIR}/periph/esp01.c
-	${CMAKE_SOURCE_DIR}/lcd/lcd.c
-	${CMAKE_SOURCE_DIR}/adc/adc_control.c
-	${CMAKE_SOURCE_DIR}/adc/goertzelfilter.c
+	${CMAKE_CURRENT_SOURCE_DIR}/main.c
+	${CMAKE_CURRENT_SOURCE_DIR}/delay.c
+	${CMAKE_CURRENT_SOURCE_DIR}/gpio/di_do_control.c
+	${CMAKE_CURRENT_SOURCE_DIR}/gpio/encoder.c
 
 	${ch32tools}/${ch32v203core}/core_riscv.c
 
@@ -57,8 +56,6 @@ set(SOURC_FILES
 	${ch32tools}/${ch32v203peripheral}/src/ch32v20x_adc.c
 	${ch32tools}/${ch32v203peripheral}/src/ch32v20x_dma.c
 	${ch32tools}/${ch32v203peripheral}/src/ch32v20x_tim.c
-	#${ch32tools}/${ch32v203peripheral}/src/ch32v20x_eth.c
-	#${ch32tools}/${ch32v203peripheral}/src/ch32v20x_rng.c
 	${ch32tools}/${ch32v203debug}/debug.c
 )
 
@@ -72,30 +69,25 @@ target_compile_definitions(${EXECUTABLE} PRIVATE
 
 # List of includ directories
 target_include_directories(${EXECUTABLE} PUBLIC
-	${CMAKE_SOURCE_DIR}/
+	${CMAKE_CURRENT_SOURCE_DIR}/
 
 	${ch32tools}/${ch32v203core}/
-	${CMAKE_SOURCE_DIR}/periph/
-	${CMAKE_SOURCE_DIR}/lcd/
-	${CMAKE_SOURCE_DIR}/adc/
+	${CMAKE_CURRENT_SOURCE_DIR}/gpio
 
 	${ch32tools}/${ch32v203user}/
 	${ch32tools}/${ch32v203peripheral}/inc/
 	${ch32tools}/${ch32v203debug}/
 	)
 
-include_directories(
-	${CMAKE_SOURCE_DIR}/
-
-	${ch32tools}/${ch32v203core}/
-	${CMAKE_SOURCE_DIR}/periph/
-	${CMAKE_SOURCE_DIR}/lcd/
-	${CMAKE_SOURCE_DIR}/adc/
-
-	${ch32tools}/${ch32v203user}/
-	${ch32tools}/${ch32v203peripheral}/inc/
-	${ch32tools}/${ch32v203debug}/
-	)
+#include_directories(
+#	${CMAKE_CURRENT_SOURCE_DIR}/
+#
+#	${ch32tools}/${ch32v203core}/
+#	${CMAKE_CURRENT_SOURCE_DIR}/gpio
+##	${ch32tools}/${ch32v203user}/
+#	${ch32tools}/${ch32v203peripheral}/inc/
+#	${ch32tools}/${ch32v203debug}/
+#	)
 
 # Compiler options
 target_compile_options(${EXECUTABLE} PRIVATE
