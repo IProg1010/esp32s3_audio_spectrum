@@ -1,10 +1,3 @@
 idf_component_register(SRCS "audio_spectrum.c"
-                    INCLUDE_DIRS ".")
-idf_component_register(SRCS "./adc_input/pcm1804.c"
-                    INCLUDE_DIRS "./adc_input/")
-idf_component_register(SRCS "./dac_output/pcm5102.c"
-                    INCLUDE_DIRS "./dac_output/")
-idf_component_register(SRCS "./display/ili9486.c"
-                    INCLUDE_DIRS "./display/")
-idf_component_register(SRCS "./slave_control/slave_uart.c"
-                    INCLUDE_DIRS "./slave_control/")
+                       INCLUDE_DIRS "." 
+                       REQUIRES driver display adc_input dac_output slave_control esp_adc esp_driver_i2s)

@@ -20,10 +20,11 @@ def run_command(cmd, cwd, extra_env=None):
 # 1. Сборка CH32 (вызовом cmake)
 ch32_dir = "./slave_controller"
 ch32_build_dir = os.path.join(ch32_dir, "build_slave")
-run_command("cmake -B build_slave -G \"MinGW Makefiles\"", ch32_dir)
+#run_command("cmake -B build_slave -G \"MinGW Makefiles\"", ch32_dir)
+run_command("cmake -B build_slave -G \"Unix Makefiles\"", ch32_dir)
 run_command("cmake --build build_slave", ch32_dir)
 # Опционально: Копируем бинарник CH32 в папку
-#ch_bin_path = os.path.join(ch32_build_dir, "stm32_firmware.bin")
+#ch_bin_path = os.path.join(ch32_build_dir, "ch32_firmware.bin")
 #esp_embed_path = "./output/slave_fw.bin"
 #if os.path.exists(ch_bin_path):
 #    shutil.copy(ch_bin_path, esp_embed_path)
