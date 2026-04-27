@@ -52,6 +52,11 @@ void click_button(int n)
 
 }
 
+void chage_focus(int n)
+{
+
+}
+
 // Глобальные хендлы (чтобы были доступны везде)
 esp_lcd_panel_handle_t panel_handle = NULL;
 esp_lcd_panel_io_handle_t io_h = NULL; 

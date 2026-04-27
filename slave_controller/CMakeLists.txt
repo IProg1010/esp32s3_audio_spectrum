@@ -13,7 +13,7 @@ if(CMAKE_HOST_WIN32)
 elseif(CMAKE_HOST_UNIX)
 	message("Build for Linux host")
 	set(CMAKE_TOOLCHAIN_FILE ${CMAKE_SOURCE_DIR}/toolchain.cmake)
-	set(ch32tools "/media/batyrshin/00EA6CFFEA6CF1F8/work/ch32/ch32tools/ch32v20x/C++/Use MRS Create C++ project-example/CH32V203C8T6++")
+	set(ch32tools "/home/batyrshin/secdisk2/work/ch32/ch32tools/ch32v20x/C++/Use MRS Create C++ project-example/CH32V203C8T6++")
 endif()
 
 project(slave_controller C CXX ASM)

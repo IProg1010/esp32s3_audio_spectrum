@@ -1,8 +1,10 @@
 # Временные файлы сборки (самое важное)
 build/
 *build*/
+*/build*/
 sdkconfig
 sdkconfig.old
+*/output_files/
 
 # Зависимости и компоненты (скачиваются через idf.py add-dependency)
 managed_components/

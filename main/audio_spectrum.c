@@ -53,6 +53,8 @@ RST	GPIO 15	Сброс
 #define LCD_CS 7
 #define LCD_RST 15
 
+
+
 // Глобальные хендлы (чтобы были доступны везде)
 esp_lcd_panel_handle_t panel_handle = NULL;
 esp_lcd_panel_io_handle_t io_h = NULL; 

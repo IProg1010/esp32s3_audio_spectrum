@@ -5,4 +5,6 @@ void initSlave();
 void writeToSlave();
 void readFromSlave();
 
+
+
 #endif //SLAVE_CONTROL_H

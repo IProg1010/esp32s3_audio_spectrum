@@ -21,5 +21,5 @@ make
 
 git_rev=$(git log --pretty=format:'%h' -n 1)
 
-cp ./dtmf_$git_rev.bin $output_dir/flash.bin
-cp ./dtmf.elf $output_dir/flash.elf
+cp ./slave_controller_$git_rev.bin $output_dir/flash_slave.bin
+cp ./slave_controller.elf $output_dir/flash_slave.elf
