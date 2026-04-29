@@ -1,3 +1,3 @@
 idf_component_register(SRCS "ili9486.c"
                        INCLUDE_DIRS "." 
-                       REQUIRES driver esp_lcd)
+                       REQUIRES driver esp_lcd esp_lvgl_port)

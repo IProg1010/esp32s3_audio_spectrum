@@ -10,6 +10,11 @@
 #include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_panel_ops.h"
 
+#include "esp_lvgl_port.h"
+
+#define LCD_H_RES 320
+#define LCD_V_RES 240
+
 // display pin according to the diagram 
 #define LCD_D0 39
 #define LCD_D1 40
@@ -25,8 +30,6 @@
 #define LCD_CS 7
 #define LCD_RST 15
 
-
-void init_ili9486();
 
 void init_display()
 {
@@ -57,6 +60,26 @@ void chage_focus(int n)
 {
 
 }
+
+int16_t get_encoder_diff()
+{
+    return 0;
+}
+
+bool get_button_state()
+{
+    return false;
+}
+
+static void encoder_read_cb(lv_indev_t * indev, lv_indev_data_t * data) {
+    // Получите данные от вашего контроллера здесь
+    int16_t enc_diff = get_encoder_diff(); // Сколько щелчков сделал (+1, -1, 0)
+    bool is_pressed = get_button_state();  // Нажата ли кнопка энкодера
+
+    data->enc_diff = enc_diff;
+    data->state = is_pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+}
+
 
 // Глобальные хендлы (чтобы были доступны везде)
 esp_lcd_panel_handle_t panel_handle = NULL;
@@ -132,7 +155,70 @@ void init_ili9486()
         esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, 320, 40, green_buf);
         // Не удаляем буфер сразу, так как DMA может еще передавать данные
     }
+
+    
+    // 1. Конфигурация порта (создает задачу для LVGL)
+    const lvgl_port_cfg_t lvgl_cfg = ESP_LVGL_PORT_INIT_CONFIG();
+    lvgl_port_init(&lvgl_cfg);
+
+    // 2. Конфигурация дисплея для LVGL
+    const lvgl_port_display_cfg_t disp_cfg = {
+        .io_handle = io_h,       // Ваш хендл из esp_lcd_new_panel_io_i80
+        .panel_handle = panel_handle, // Ваш хендл из esp_lcd_new_panel_st7789 (или другой)
+        .buffer_size = LCD_H_RES * 40,// Размер буфера (например, 40 строк)
+        .double_buffer = true,        // Включите, если есть PSRAM (убирает мерцание)
+        .hres = LCD_H_RES,
+        .vres = LCD_V_RES,
+        .monochrome = false,
+        //.mipi_dsi = false,
+        .flags = {
+            .buff_dma = true,         // Обязательно для i8080
+            .buff_spiram = false,     // true, если выделяете в PSRAM
+        }
+    };
+
+    // 3. Добавление дисплея в порт
+    lv_display_t * disp = lvgl_port_add_disp(&disp_cfg);
+
+    // Это стандартный способ LVGL 9, работает везде
+    lv_indev_t * enc_indev = lv_indev_create();            // Создаем устройство
+    lv_indev_set_type(enc_indev, LV_INDEV_TYPE_ENCODER);   // Указываем, что это энкодер
+    lv_indev_set_read_cb(enc_indev, encoder_read_cb);      // Назначаем ваш callback
+    lv_indev_set_display(enc_indev, disp);                 // Привязываем к дисплею
+
+
+    lvgl_port_lock(50);
+
+    // 1. Создаем группу
+    lv_group_t * g = lv_group_create();
+    lv_group_set_default(g); // Теперь все новые кнопки будут автоматом падать в эту группу
+
+    // 2. Привязываем энкодер к группе
+    lv_indev_set_group(enc_indev, g);
+
+    // 3. Создаем кнопки (они сами добавятся в группу 'g')
+    lv_obj_t * btn1 = lv_button_create(lv_screen_active());
+    lv_obj_set_size(btn1, 100, 50);
+    lv_obj_align(btn1, LV_ALIGN_CENTER, 0, -30); // По центру, смещение вверх
+    // Создаем текст ВНУТРИ btn1
+    lv_obj_t * label1 = lv_label_create(btn1); 
+    lv_label_set_text(label1, "Старт");      // Текст кнопки
+    lv_obj_center(label1);                   // Центрируем текст в кнопке
+
+
+    lv_obj_t * btn2 = lv_button_create(lv_screen_active());
+    lv_obj_set_size(btn2, 100, 50);
+    lv_obj_align(btn2, LV_ALIGN_CENTER, 0, 30);  // По центру, смещение вниз на 30px
+
+    // Создаем текст ВНУТРИ btn2
+    lv_obj_t * label2 = lv_label_create(btn2);
+    lv_label_set_text(label2, "Стоп");
+    lv_obj_center(label2);
+
+    lvgl_port_unlock();
 }
+
+
 
 void update_ili9486()
 {
