@@ -1,7 +1,7 @@
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR RISC-V)
 
-set(RISCV_TOOLCHAIN_DIR "/home/batyrshin/secdisk2/work/ch32/ch32tools/xpack-riscv-none-elf-gcc-14.2.0-3/bin")
+set(RISCV_TOOLCHAIN_DIR "/home/batyrshin/work/ch32/xpack-riscv-none-elf-gcc-15.2.0-1-linux-x64/xpack-riscv-none-elf-gcc-15.2.0-1/bin")
 
 set(BINUTILS_PATH ${RISCV_TOOLCHAIN_DIR})
 

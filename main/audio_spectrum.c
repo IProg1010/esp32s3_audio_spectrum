@@ -36,6 +36,8 @@ RST	GPIO 15	Сброс
 #include "esp_lcd_panel_ops.h"
 #include "driver/i2s_std.h"
 
+#include <display.h>
+
 #define FFT_SIZE 1024
 
 // Назначаем пины согласно схеме
@@ -56,8 +58,8 @@ RST	GPIO 15	Сброс
 
 
 // Глобальные хендлы (чтобы были доступны везде)
-esp_lcd_panel_handle_t panel_handle = NULL;
-esp_lcd_panel_io_handle_t io_h = NULL; 
+/*esp_lcd_panel_handle_t panel_handle = NULL;
+esp_lcd_panel_io_handle_t io_h = NULL; */
 
 #define ADC_FRAME_SIZE  FFT_SIZE * 2 // 1024 семпла по 2 байта (тип Type1)
 adc_continuous_handle_t adc_handle = NULL;
@@ -154,7 +156,7 @@ void play_iq_test_tone(i2s_chan_handle_t tx_handle) {
     }
 }
 
-
+/*
 void init_ili9486_parallel() {
     // 1. Настройка шины I80
     esp_lcd_i80_bus_handle_t i80_bus = NULL;
@@ -217,6 +219,7 @@ void init_ili9486_parallel() {
         // Не удаляем буфер сразу, так как DMA может еще передавать данные
     }
 }
+    */
 float fft_input[FFT_SIZE * 2]; // Массив для FFT (Re, Im)
 float window[FFT_SIZE];
 uint16_t adc_raw[FFT_SIZE];
@@ -245,7 +248,7 @@ void app_main(void) {
     adc_oneshot_chan_cfg_t config = { .bitwidth = ADC_BITWIDTH_12, .atten = ADC_ATTEN_DB_12 };
     ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, ADC_CHANNEL_0, &config));
 */
-    prepare_sine_table();
+    /*prepare_sine_table();
     init_i2s_dac(); // функция инициализации I2S
     
     printf("Запуск I/Q теста 1 кГц...\n");
@@ -258,16 +261,17 @@ void app_main(void) {
         .pin_bit_mask = (1ULL << LCD_RST),
         .mode = GPIO_MODE_OUTPUT,
     };
-    /*gpio_config(&io_conf);
+    gpio_config(&io_conf);
 
     gpio_set_level(LCD_RST, 0);
     vTaskDelay(pdMS_TO_TICKS(200));
     gpio_set_level(LCD_RST, 1);
     vTaskDelay(pdMS_TO_TICKS(200));*/
-    init_adc_dma();
-    init_ili9486_parallel();
+    //init_adc_dma();
+    //init_ili9486_parallel();
+    init_display();
 
-    uint16_t *black_buf = heap_caps_malloc(480 * 100 * sizeof(uint16_t), MALLOC_CAP_DMA);
+    /*uint16_t *black_buf = heap_caps_malloc(480 * 100 * sizeof(uint16_t), MALLOC_CAP_DMA);
     uint16_t *green_buf = heap_caps_malloc(8 * 100 * sizeof(uint16_t), MALLOC_CAP_DMA); // Столбик шириной 8 пикселей
 
     // Заполняем их цветами один раз
@@ -284,11 +288,11 @@ void app_main(void) {
     // Один вертикальный буфер шириной 10 и высотой 150
     uint16_t *bar_data = heap_caps_malloc(10 * 150 * sizeof(uint16_t), MALLOC_CAP_DMA);
     uint8_t result[ADC_FRAME_SIZE];
-    uint32_t ret_num = 0;
+    uint32_t ret_num = 0;*/
     while (1) {
-    play_iq_test_tone(tx_handle);
+        /*play_iq_test_tone(tx_handle);
         // Читаем данные (для простоты пока в цикле, позже переведем на DMA)
-        /*for (int i = 0; i < FFT_SIZE; i++) {
+        for (int i = 0; i < FFT_SIZE; i++) {
             int val;
             adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &val);
             fft_input[i * 2] = (float)val * window[i]; // Окно Ханна
@@ -341,7 +345,7 @@ void app_main(void) {
         
         printf("Красные столбики отрисованы\n");*/
         // Ждем готовую порцию данных от DMA (таймаут 100мс)
-        esp_err_t err = adc_continuous_read(adc_handle, result, ADC_FRAME_SIZE, &ret_num, 100);
+        /*esp_err_t err = adc_continuous_read(adc_handle, result, ADC_FRAME_SIZE, &ret_num, 100);
         
         if (err == ESP_OK) {
             float sum = 0;
@@ -392,7 +396,7 @@ void app_main(void) {
             // Рисуем столбик целиком (он сам себя стирает сверху!)
             // i*12 — это позиция X с зазором 2 пикселя
             esp_lcd_panel_draw_bitmap(panel_handle, i*12, 0, i*12 + 10, 150, bar_data);
-        }
+        }*/
         vTaskDelay(pdMS_TO_TICKS(2));
     }
 }

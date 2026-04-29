@@ -26,10 +26,11 @@
 #define LCD_RST 15
 
 
+void init_ili9486();
 
 void init_display()
 {
-
+    init_ili9486();
 }
 
 void update_display()
@@ -71,7 +72,7 @@ void init_ili9486()
         .wr_gpio_num = LCD_WR,
         .data_gpio_nums = { LCD_D0, LCD_D1, LCD_D2, LCD_D3, LCD_D4, LCD_D5, LCD_D6, LCD_D7 },
         .bus_width = 8,
-        .max_transfer_bytes = 480 * 40 * 2, // max buffer for write to display
+        .max_transfer_bytes = 320 * 40 * 2, // max buffer for write to display
     };
     ESP_ERROR_CHECK(esp_lcd_new_i80_bus(&bus_config, &i80_bus));
 
@@ -90,7 +91,7 @@ void init_ili9486()
     // 3. Create object for lcd display
     esp_lcd_panel_dev_config_t panel_config = {
         .reset_gpio_num = LCD_RST,
-        .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,
+        .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
         .bits_per_pixel = 16,
     };
     // Use ST7789 driver for ILI9486
@@ -117,11 +118,18 @@ void init_ili9486()
     vTaskDelay(pdMS_TO_TICKS(20));
 
     // 6. ТЕСТ: Заливка полоски (DMA)
-    uint16_t *black_buf = heap_caps_malloc(480 * 40 * 2, MALLOC_CAP_DMA);
+    uint16_t *black_buf = heap_caps_malloc(320 * 40 * 2, MALLOC_CAP_DMA);
     if (black_buf) 
     {
-        for(int i=0; i<480*40; i++) black_buf[i] = 0x001F; // Синий для теста (заметнее черного)
-        esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, 480, 40, black_buf);
+        for(int i=0; i<320*40; i++) black_buf[i] = 0xF01F; // Синий для теста (заметнее черного)
+        esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, 320, 40, black_buf);
+        // Не удаляем буфер сразу, так как DMA может еще передавать данные
+    }
+    uint16_t *green_buf = heap_caps_malloc(320 * 40 * 2, MALLOC_CAP_DMA);
+    if (green_buf) 
+    {
+        for(int i=0; i<320*40; i++) green_buf[i] = 0xFD0A; // Синий для теста (заметнее черного)
+        esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, 320, 40, green_buf);
         // Не удаляем буфер сразу, так как DMA может еще передавать данные
     }
 }
