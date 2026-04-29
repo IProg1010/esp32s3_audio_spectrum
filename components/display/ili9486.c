@@ -12,8 +12,8 @@
 
 #include "esp_lvgl_port.h"
 
-#define LCD_H_RES 320
-#define LCD_V_RES 240
+#define LCD_H_RES 240
+#define LCD_V_RES 320
 
 // display pin according to the diagram 
 #define LCD_D0 39
@@ -102,12 +102,12 @@ void init_ili9486()
     // 2. Setting IO
     esp_lcd_panel_io_i80_config_t io_config = {
         .cs_gpio_num = LCD_CS,
-        .pclk_hz = 2 * 1000 * 1000, 
+        .pclk_hz = 2 * 10000 * 1000, 
         .trans_queue_depth = 10,
         .dc_levels = { .dc_idle_level = 0, .dc_cmd_level = 0, .dc_dummy_level = 0, .dc_data_level = 1 },
         .lcd_cmd_bits = 8,
         .lcd_param_bits = 8,
-        .flags = { .pclk_idle_low = 0 }, // Вместо pclk_active_neg
+        .flags = { .pclk_idle_low = 1 }, // Вместо pclk_active_neg
     };
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_i80(i80_bus, &io_config, &io_h));
 
@@ -134,8 +134,15 @@ void init_ili9486()
     uint8_t fmt = 0x55;
     esp_lcd_panel_io_tx_param(io_h, 0x3A, &fmt, 1); // 16-bit RGB565
     
-    uint8_t madctl = 0x28; // BGR order + Orientation
+    uint8_t b6_data[] = {0x0A, 0xA2, 0x27}; 
+    esp_lcd_panel_io_tx_param(io_h, 0xB6, b6_data, 3);
+
+    uint8_t madctl = 0x08; // BGR order + Orientation //0x28
     esp_lcd_panel_io_tx_param(io_h, 0x36, &madctl, 1);
+    
+    uint8_t b7_data = 0x07; // Стандарт: 0x06. Попробуйте изменить на 0x04 или 0x07
+    esp_lcd_panel_io_tx_param(io_h, 0xB7, &b7_data, 1);
+
 
     esp_lcd_panel_io_tx_param(io_h, 0x29, NULL, 0); // Display ON
     vTaskDelay(pdMS_TO_TICKS(20));
@@ -186,6 +193,9 @@ void init_ili9486()
     lv_indev_set_read_cb(enc_indev, encoder_read_cb);      // Назначаем ваш callback
     lv_indev_set_display(enc_indev, disp);                 // Привязываем к дисплею
 
+    //lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565_SWAPPED);
+    //lv_display_set_render_mode(disp, LV_DISPLAY_RENDER_MODE_PARTIAL);
+    lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_90); // Или 180, 270
 
     lvgl_port_lock(50);
 
@@ -202,7 +212,7 @@ void init_ili9486()
     lv_obj_align(btn1, LV_ALIGN_CENTER, 0, -30); // По центру, смещение вверх
     // Создаем текст ВНУТРИ btn1
     lv_obj_t * label1 = lv_label_create(btn1); 
-    lv_label_set_text(label1, "Старт");      // Текст кнопки
+    lv_label_set_text(label1, "Start");      // Текст кнопки
     lv_obj_center(label1);                   // Центрируем текст в кнопке
 
 
@@ -212,8 +222,34 @@ void init_ili9486()
 
     // Создаем текст ВНУТРИ btn2
     lv_obj_t * label2 = lv_label_create(btn2);
-    lv_label_set_text(label2, "Стоп");
+    lv_label_set_text(label2, "Stop");
     lv_obj_center(label2);
+
+    lvgl_port_unlock();
+
+    lvgl_port_lock(50);
+
+    // 1. Создаем дугу
+    lv_obj_t * arc = lv_arc_create(lv_screen_active());
+    lv_obj_set_size(arc, 150, 150);
+    lv_arc_set_rotation(arc, 135);
+    lv_arc_set_bg_angles(arc, 0, 270);
+    lv_obj_center(arc);
+
+    // 2. Скрываем стандартный серый круг ручки
+    lv_obj_set_style_bg_opa(arc, 0, LV_PART_KNOB);      // Делаем фон ручки прозрачным
+    lv_obj_set_style_shadow_width(arc, 0, LV_PART_KNOB); // Убираем тень
+
+    // 3. Добавляем стрелку как текст внутри ручки
+    lv_obj_t * label_arrow = lv_label_create(arc);
+    // LV_PART_KNOB сам по себе не может содержать объекты, 
+    // поэтому мы создаем label и привязываем его положение к ручке
+    lv_label_set_text(label_arrow, LV_SYMBOL_UP); 
+    lv_obj_set_style_text_color(label_arrow, lv_palette_main(LV_PALETTE_RED), 0);
+
+    // 4. Чтобы стрелка двигалась за дугой, используем событие
+    // В LVGL 9 это можно сделать через обновление координат в callback
+    // Но проще всего добавить стиль "вращения" текста
 
     lvgl_port_unlock();
 }
