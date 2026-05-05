@@ -37,6 +37,7 @@ RST	GPIO 15	Сброс
 #include "driver/i2s_std.h"
 
 #include <display.h>
+#include <slave_uart.h>
 
 #define FFT_SIZE 1024
 
@@ -269,6 +270,7 @@ void app_main(void) {
     vTaskDelay(pdMS_TO_TICKS(200));*/
     //init_adc_dma();
     //init_ili9486_parallel();
+    initSlave();
     init_display();
 
     /*uint16_t *black_buf = heap_caps_malloc(480 * 100 * sizeof(uint16_t), MALLOC_CAP_DMA);
@@ -397,6 +399,6 @@ void app_main(void) {
             // i*12 — это позиция X с зазором 2 пикселя
             esp_lcd_panel_draw_bitmap(panel_handle, i*12, 0, i*12 + 10, 150, bar_data);
         }*/
-        vTaskDelay(pdMS_TO_TICKS(2));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }

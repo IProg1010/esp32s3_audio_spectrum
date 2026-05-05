@@ -23,5 +23,6 @@ void wch_identify_chip(uart_port_t uart_num);
  * @param addr 32-bit start address
  */
 void wch_program_data(uart_port_t uart_num, uint32_t addr, uint8_t *data, uint8_t data_len);
+void wch_flash_erase(uart_port_t uart_num, uint32_t sector_count);
 
 #endif

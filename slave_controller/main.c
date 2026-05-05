@@ -48,21 +48,19 @@ void GPIO_Toggle_INIT(void)
     GPIO_Init(GPIOB, &GPIO_InitStructure);
 }
 
+void blinkLed();
 void initPeriph(void);
 
-/*********************************************************************
- * @fn      main
- *
- * @brief   Main program.
- *
- * @return  none
- */
 
 int main(void)
 {
     initPeriph();
     while(1)
     {
+        blinkLed();
+        delay_ms(1000);
+        blinkLed();
+        delay_ms(1000);
     }
 }
 
