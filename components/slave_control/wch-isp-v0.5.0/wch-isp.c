@@ -7,13 +7,14 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <errno.h>
+#include <limits.h>
 //#include <libusb.h>
 #include "../dev_iface.h"
 
 #include "arg.h"
 
-#define __noreturn __attribute__((noreturn))
-#define __unused __attribute__((unused))
+//#define __noreturn __attribute__((noreturn))
+//#define __unused __attribute__((unused))
 #define __printf __attribute__((format(printf,1,2)))
 
 //typedef uint8_t uint8_t;
@@ -69,6 +70,7 @@
 #define ISP_PID 0x55e0
 #define ISP_EP_OUT (2 | LIBUSB_ENDPOINT_OUT)
 #define ISP_EP_IN (2 | LIBUSB_ENDPOINT_IN)
+#define VERSION "1.0.0"
 
 struct db;
 struct isp_dev {
@@ -91,6 +93,8 @@ struct isp_dev {
 
 #include "devices.h"
 
+
+static struct isp_dev glob_dev;
 static struct isp_dev *dev_list;
 static size_t dev_count;
 
@@ -103,9 +107,9 @@ static int do_reset;
 static int do_verify = 1;
 static const char *do_match;
 
-__noreturn static void die(const char *errstr, ...) __printf;
-__noreturn static void version(void);
-__noreturn static void usage(int help);
+/*__noreturn */static void die(const char *errstr, ...) __printf;
+/*__noreturn*/ static void version(void);
+/*__noreturn*/ static void usage(int help);
 static void *xcalloc(size_t nmemb, size_t size);
 
 static void dbg_isp_cmd(const char *dir, uint8_t cmd, uint16_t len, const uint8_t *data);
@@ -140,7 +144,7 @@ static void die(const char *errstr, ...)
 	vfprintf(stderr, errstr, ap);
 	va_end(ap);
 
-	exit(1);
+	//exit(1);
 }
 
 static int ctz_uint32_t(uint32_t x)
@@ -233,7 +237,8 @@ static size_t isp_recv_cmd(struct isp_dev *dev, uint8_t cmd, uint16_t len, uint8
 
 	ret = dev->dev_func->read(buf, 64, &got);//libusb_bulk_transfer(dev->usb_dev, ISP_EP_IN, buf, len + 4, &got, 10000);
 	if (ret)
-		die("isp_recv_cmd: %s\n", libusb_strerror(ret));
+		//die("isp_recv_cmd: %s\n", libusb_strerror(ret));
+		printf("isp_recv_cmd: %s\n", "sd");
 
 	if(buf[0] != WCH_ISP_HEADER_1 && buf[1] != WCH_ISP_HEADER_2)
 	{
@@ -254,6 +259,13 @@ static size_t isp_recv_cmd(struct isp_dev *dev, uint8_t cmd, uint16_t len, uint8
 
 	if (data != NULL)
 		memcpy(data, buf + 5, len);
+
+	
+	uint8_t crc = calculate_crc(&buf[2], len-1);
+	if(crc != buf[len-1])
+	{
+		die("isp_recv_cmd: crc not correct, crc = %#.x (crc_read = %#.x)\n", crc, buf[len-1]);
+	}	
 
 	//dbg_isp_cmd("recv", cmd, len, data);
 
@@ -637,47 +649,42 @@ file_read_all(const char *name, size_t *size_p, void **bin_p)
 	*bin_p = bin;
 }
 
-static void
-cmd_write_flash(struct isp_dev *dev, int argc, char **argv)
+static void cmd_write_flash_bin(uint8_t* bin, size_t size)
 {
 	const char *name;
-	size_t size;
-	void *bin;
 
-	//if (argc < 2)
-		//die("%s: missing file\n", argv[0]);
-		printf();
-	//name = argv[1];
+	if (size > db_flash_size(&glob_dev))
+		printf("bin_data too big, flash size is\n");
 
-	//file_read_all(name, &size, &bin);
-	if (size > db_flash_size(dev))
-		printf("%s: file too big, flash size is %zd\n", name, db_flash_size(dev));
-
-	isp_flash(dev, size, bin);
+	isp_flash(&glob_dev, size, bin);
 	if (do_verify)
-		isp_verify(dev, size, bin);
+		isp_verify(&glob_dev, size, bin);
 
-	free(bin);
+	//free(bin);
 }
 
-static void
-cmd_verify_flash(struct isp_dev *dev, int argc, char **argv)
+static 
+void cmd_write_flash(struct isp_dev *dev, int argc, char **argv)
 {
-	const char *name;
-	size_t size;
-	void *bin;
 
-	if (argc < 2)
-		die("%s: missing file\n", argv[0]);
-	name = argv[1];
+	//free(bin);
+}
 
-	file_read_all(name, &size, &bin);
-	if (size > db_flash_size(dev))
-		die("%s: file too big, flash size is %zd\n", name, db_flash_size(dev));
+static void cmd_verify_flash_bin(uint8_t* bin, size_t size)
+{
+	if (size > db_flash_size(&glob_dev))
+		die("bin flash too big, flash size is %zd\n", db_flash_size(&glob_dev));
 
-	isp_verify(dev, size, bin);
+	isp_verify(&glob_dev, size, bin);
 
-	free(bin);
+	//free(bin);
+}
+
+static 
+void cmd_verify_flash(struct isp_dev *dev, int argc, char **argv)
+{
+
+	//free(bin);
 }
 
 /**
@@ -1091,7 +1098,7 @@ is_valid_cmd(const char *name)
 }
 
 int
-main(int argc, char **argv)
+main_wchisp(int argc, char **argv)
 {
 	struct isp_dev *dev;
 	size_t i;
@@ -1168,7 +1175,7 @@ main(int argc, char **argv)
 
 	isp_fini(dev);
 out:
-	usb_fini();
+	//usb_fini();
 
 	return 0;
 }

@@ -23,35 +23,35 @@
 
 /* record for a device */
 struct db_dev {
-	u8 id;
+	uint8_t id;
 	const char *name;
-	u32 flash_size;
-	u32 eeprom_size;
+	uint32_t flash_size;
+	uint32_t eeprom_size;
 };
 
 struct flash_cfg {
-	u32 code;
-	u32 sram;
+	uint32_t code;
+	uint32_t sram;
 };
 
 /* struct to decode userconf bits */
 struct userconf_bit {
-	u32 mask;
+	uint32_t mask;
 	const char *name;
-	const char *(*tostr)(const struct isp_dev *dev, char *buf, size_t len,  u32 val);
+	const char *(*tostr)(const struct isp_dev *dev, char *buf, size_t len,  uint32_t val);
 };
 
 struct userconf_reg {
-	u8 size; /* in bytes, must be >0 */
-	u8 addr; /* within the config */
+	uint8_t size; /* in bytes, must be >0 */
+	uint8_t addr; /* within the config */
 	const char *name; /* optional */
 	const struct userconf_bit *bits; /* optional */
 };
 
 /* record for a device family */
 struct db {
-	u8 type;
-	u32 flash_sector_size;
+	uint8_t type;
+	uint32_t flash_sector_size;
 	const char *name;
 	const struct userconf_reg *userconf_regs;
 	const struct flash_cfg (*flash_cfg)[4]; /* look-up table */
@@ -59,25 +59,25 @@ struct db {
 };
 
 static const char *
-print_set_disabled(const struct isp_dev *dev, char *buf, size_t len, u32 val)
+print_set_disabled(const struct isp_dev *dev, char *buf, size_t len, uint32_t val)
 {
 	return val ? "disabled" : "enabled";
 }
 
 static const char *
-print_set_enabled(const struct isp_dev *dev, char *buf, size_t len, u32 val)
+print_set_enabled(const struct isp_dev *dev, char *buf, size_t len, uint32_t val)
 {
 	return val ? "enabled" : "disabled";
 }
 
 static const char *
-print_rdpr_cfg(const struct isp_dev *dev, char *buf, size_t len, u32 val)
+print_rdpr_cfg(const struct isp_dev *dev, char *buf, size_t len, uint32_t val)
 {
 	return val == 0xa5 ? "disabled" : "enabled";
 }
 
 static const char *
-print_ch569_user_mem(const struct isp_dev *dev, char *buf, size_t len, u32 val)
+print_ch569_user_mem(const struct isp_dev *dev, char *buf, size_t len, uint32_t val)
 {
 	switch (val) {
 	case 0:

@@ -1,5 +1,6 @@
 #include "slave_uart.h"
 #include "wchisp.h"
+#include "wch-isp.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
 #include "esp_log.h"
