@@ -58,9 +58,17 @@ int main(void)
     while(1)
     {
         blinkLed();
-        delay_ms(1000);
+        delay_ms(500);
         blinkLed();
-        delay_ms(1000);
+        delay_ms(500);
+        blinkLed();
+        delay_ms(500);
+        blinkLed();
+        delay_ms(500);
+        blinkLed();
+        delay_ms(500);
+        blinkLed();
+        delay_ms(500);
     }
 }
 

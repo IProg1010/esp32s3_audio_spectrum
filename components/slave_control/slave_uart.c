@@ -1,6 +1,7 @@
 #include "slave_uart.h"
 #include "wchisp.h"
 #include "wch-isp.h"
+#include "dev_iface.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
 #include "esp_log.h"
@@ -22,7 +23,9 @@ esp_err_t flash_firmware(const uint8_t* data, size_t size);
 
 extern const uint8_t bin_start[] asm("_binary_flash_slave_bin_start");
 extern const uint8_t bin_end[]   asm("_binary_flash_slave_bin_end");
+size_t bin_size;
 
+device_conf dev_funct;
 
 void slave_control_enter_bootloader()
 {
@@ -48,7 +51,7 @@ void slave_control_enter_app()
 void find_slave_controller_firmware() 
 {
     // 1. Calculate bootloader size
-    size_t bin_size = bin_end - bin_start;
+    bin_size = bin_end - bin_start;
     printf("Найдена прошивка подчиненного контроллера: %d байт\n", bin_size);
     //flash_firmware((const uint8_t*) bin_start, bin_size);
 }
@@ -80,8 +83,25 @@ void flashSlave()
 
 }
 
+int writeUart(uint8_t* buff, uint16_t size)
+{
+    uart_flush_input(UART_PORT_NUM);
+    uart_write_bytes(UART_PORT_NUM, buff, size);
+    //uart_wait_tx_done(UART_PORT_NUM, pdMS_TO_TICKS(100));
+    return size;
+}
+
+int readUart(uint8_t* buff, uint16_t size, int* get_cnt)
+{
+    *get_cnt = uart_read_bytes(UART_PORT_NUM, buff, size, pdMS_TO_TICKS(240));
+    return *get_cnt;
+}
+
 void initSlave()
 {
+    dev_funct.write = writeUart;
+    dev_funct.read = readUart;
+    set_function(&dev_funct);
     find_slave_controller_firmware();
     vTaskDelay(pdMS_TO_TICKS(1000));    // Пауза на запуск*/
 
@@ -96,6 +116,12 @@ void initSlave()
     vTaskDelay(pdMS_TO_TICKS(1000));    // Пауза на запуск
     wch_identify_chip(UART_PORT_NUM);
     wch_flash_erase(UART_PORT_NUM, 100); //  
+    //isp_cmd_identify_glob();
+    program_wchisp_algo();
+    cmd_write_flash_bin((const uint8_t*) bin_start, bin_size);
+    printf("program ok\n");
+    vTaskDelay(pdMS_TO_TICKS(500));    // Пауза на запуск
+    slave_control_enter_app();
 }
 
 void writeToSlave()

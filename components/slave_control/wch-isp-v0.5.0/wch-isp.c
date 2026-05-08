@@ -48,8 +48,10 @@
 #define CFG_MASK_UID 0x10 /* Device Unique ID */
 #define CFG_MASK_ALL 0x1f /* All mask bits of CFGs */
 
-#define WCH_ISP_HEADER_1     0x57
-#define WCH_ISP_HEADER_2     0xAB
+#define WCH_ISP_REQ_HEADER_1     0x57
+#define WCH_ISP_REQ_HEADER_2     0xAB
+#define WCH_ISP_RESP_HEADER_1    0x55
+#define WCH_ISP_RESP_HEADER_2    0xAA
 
 #define CMD_IDENTIFY	0xa1
 #define CMD_ISP_END	0xa2
@@ -81,7 +83,7 @@ struct isp_dev {
 	uint16_t btver;
 	uint8_t xor_key[8];
 	//libusb_device_handle *usb_dev;
-	device_conf* dev_func;
+	const device_conf* dev_func;
 	unsigned int kernel;
 	/* info filled from db */
 	const struct db *db; /* device family */
@@ -113,20 +115,21 @@ static const char *do_match;
 static void *xcalloc(size_t nmemb, size_t size);
 
 static void dbg_isp_cmd(const char *dir, uint8_t cmd, uint16_t len, const uint8_t *data);
-static void isp_init(struct isp_dev *dev);
-static void isp_key_init(struct isp_dev *dev);
-static void isp_fini(struct isp_dev *dev);
-static size_t isp_send_cmd(struct isp_dev *dev, uint8_t cmd, uint16_t len, const uint8_t *data);
-static size_t isp_recv_cmd(struct isp_dev *dev, uint8_t cmd, uint16_t len, uint8_t *data);
+void isp_init(struct isp_dev *dev);
+void isp_key_init(struct isp_dev *dev);
+void isp_fini(struct isp_dev *dev);
+size_t isp_send_cmd(struct isp_dev *dev, uint8_t cmd, uint16_t len, const uint8_t *data);
+size_t isp_recv_cmd(struct isp_dev *dev, uint8_t cmd, uint16_t len, uint8_t *data);
 
 const device_conf* glob_dev_conf;
 
 void set_function(const device_conf* dev_conf)
 {
 	glob_dev_conf = dev_conf;
+	glob_dev.dev_func = dev_conf;
 }
 
-uint8_t calculate_crc(const uint8_t *data, size_t len) 
+uint8_t isp_calculate_crc(const uint8_t *data, size_t len) 
 {
     uint8_t crc = 0;
     for (size_t i = 0; i < len; i++) 
@@ -152,7 +155,7 @@ static int ctz_uint32_t(uint32_t x)
 	return __builtin_ctz(x);
 }
 
-static void dbg_isp_cmd(const char *dir, uint8_t cmd, uint16_t len, const uint8_t *data)
+void dbg_isp_cmd(const char *dir, uint8_t cmd, uint16_t len, const uint8_t *data)
 {
 	uint16_t i;
 
@@ -165,7 +168,7 @@ static void dbg_isp_cmd(const char *dir, uint8_t cmd, uint16_t len, const uint8_
 	fprintf(stderr, "\n");
 }
 
-static void *xcalloc(size_t nmemb, size_t size)
+void *xcalloc(size_t nmemb, size_t size)
 {
 	void *p = calloc(nmemb, size);
 	if (p == NULL)
@@ -173,7 +176,7 @@ static void *xcalloc(size_t nmemb, size_t size)
 	return p;
 }
 
-static int streq(const char *s1, const char *s2)
+int streq(const char *s1, const char *s2)
 {
 	return strcmp(s1, s2) == 0;
 }
@@ -196,7 +199,7 @@ static void reg_write_le(uint8_t *dst, size_t len, uint32_t val)
 	}
 }
 
-static size_t isp_send_cmd(struct isp_dev *dev, uint8_t cmd, uint16_t len, const uint8_t *data)
+size_t isp_send_cmd(struct isp_dev *dev, uint8_t cmd, uint16_t len, const uint8_t *data)
 {
 	uint8_t buf[64];
 	int ret, got = 0;
@@ -205,8 +208,8 @@ static size_t isp_send_cmd(struct isp_dev *dev, uint8_t cmd, uint16_t len, const
 		die("isp_send_cmd: invalid argument, length %d\n", len);
 
 
-    buf[0] = WCH_ISP_HEADER_1;
-    buf[1] = WCH_ISP_HEADER_2; 
+    buf[0] = WCH_ISP_REQ_HEADER_1;
+    buf[1] = WCH_ISP_REQ_HEADER_2; 
 
 	buf[2] = cmd;
 	/* length is sent in little endian... but it doesn't really matter
@@ -215,64 +218,102 @@ static size_t isp_send_cmd(struct isp_dev *dev, uint8_t cmd, uint16_t len, const
 	buf[3] = (len >> 0) & 0xff;
 	buf[4] = (len >> 8) & 0xff;
 	if (len != 0)
-		memcpy(&buf[3], data, len);
+		memcpy(&buf[5], data, len);
 
-	buf[len+5] = calculate_crc(&buf[2], len+4);	
-	//dbg_isp_cmd("send", cmd, len, data);
+	buf[len+5] = isp_calculate_crc(&buf[2], len+3);	
+	/*printf("send:");
+	for(int i = 0; i < len+6; i++)
+	{
+		printf("%02X", buf[i]);
+	}
+	printf("\n");*/
 
-	ret = dev->dev_func->write(buf, len + 3);//libusb_bulk_transfer(dev->usb_dev, ISP_EP_OUT, buf, len + 3, &got, 10000);
+	ret = dev->dev_func->write(buf, len + 6);//libusb_bulk_transfer(dev->usb_dev, ISP_EP_OUT, buf, len + 3, &got, 10000);
 	//if (ret)
 		//die("isp_send_cmd: %s\n", libusb_strerror(ret));
 	return got;
 }
 
-static size_t isp_recv_cmd(struct isp_dev *dev, uint8_t cmd, uint16_t len, uint8_t *data)
+size_t isp_recv_cmd(struct isp_dev *dev, uint8_t cmd, uint16_t len, uint8_t *data)
 {
-	uint8_t buf[64];
+	uint8_t buf[69];
 	int ret, got = 0;
 	uint16_t hdrlen;
 
 	if ((size_t)(len + 4) > sizeof(buf))
 		die("isp_recv_cmd: invalid argument, length %d\n", len);
 
-	ret = dev->dev_func->read(buf, 64, &got);//libusb_bulk_transfer(dev->usb_dev, ISP_EP_IN, buf, len + 4, &got, 10000);
+	len = (len + 7); 	
+	//printf("len =%d\n", len);
+	ret = dev->dev_func->read(buf, len, &got);//libusb_bulk_transfer(dev->usb_dev, ISP_EP_IN, buf, len + 4, &got, 10000);
+	int read_len = got;
+	//printf("read:");
+	/*for(int i = 0; i < read_len; i++)
+	{
+		printf("%02X", buf[i]);
+	}*/
+	while(read_len < len)
+	{
+		ret = dev->dev_func->read(&buf[read_len], len-read_len, &got);
+		read_len += got;
+		if(got == 0)
+		{
+			break;
+		}
+		//printf("read in cycle\n");
+		//printf("read_len =%d\n", read_len);
+	}
+	/*printf("read_len =%d\n", read_len);
+	printf("read:");
+	for(int i = 0; i < read_len; i++)
+	{
+		printf("%02X", buf[i]);
+	}
+	printf("\n");
 	if (ret)
 		//die("isp_recv_cmd: %s\n", libusb_strerror(ret));
 		printf("isp_recv_cmd: %s\n", "sd");
 
-	if(buf[0] != WCH_ISP_HEADER_1 && buf[1] != WCH_ISP_HEADER_2)
-	{
 
+	printf("ok\n");*/
+	if(buf[0] != WCH_ISP_RESP_HEADER_1 && buf[1] != WCH_ISP_RESP_HEADER_2)
+	{
+		die("isp_recv_cmd: header not wrong");
 	}	
-	if (got < 4)
+	if (read_len < 4)
 		die("isp_recv_cmd: not enough data recv\n");
 	if (buf[2] != cmd)
 		die("isp_recv_cmd: got wrong command %#.x (exp %#.x)\n", buf[0], cmd);
 	//if (buf[1])
 	//	die("isp_recv_cmd: cmd error %#.x\n", buf[1]);
 
-	got -= 4;
-	hdrlen = buf[4] | (buf[5] << 8);
-	if (hdrlen != got)
+	//printf("ok\n");
+	read_len -= 7;
+	hdrlen = (buf[3] << 8) | (buf[4]);
+	if (hdrlen != read_len)
 		die("isp_recv_cmd: length mismatch, got %#.x (hdr %#.x)\n", got, hdrlen);
-	len = MIN(len, got);
-
-	if (data != NULL)
-		memcpy(data, buf + 5, len);
-
 	
-	uint8_t crc = calculate_crc(&buf[2], len-1);
-	if(crc != buf[len-1])
+	//printf("len = %d, got = %d\n", len, got);
+	len = MIN(len, read_len);
+	//printf("len = %d\n", len);
+
+	//printf("ok\n");
+	if (data != NULL)
+		memcpy(data, buf + 6, len);
+
+	//printf("ok\n");
+	uint8_t crc = isp_calculate_crc(&buf[2], read_len+4);
+	if(crc != buf[read_len+6])
 	{
-		die("isp_recv_cmd: crc not correct, crc = %#.x (crc_read = %#.x)\n", crc, buf[len-1]);
+		die("isp_recv_cmd: crc not correct, crc = %#.x (crc_read = %#.x)\n", crc, buf[read_len+6]);
 	}	
 
 	//dbg_isp_cmd("recv", cmd, len, data);
 
-	return got;
+	return read_len;
 }
 
-static void isp_cmd_identify(struct isp_dev *dev, uint8_t *dev_id, uint8_t *dev_type)
+void isp_cmd_identify(struct isp_dev *dev, uint8_t *dev_id, uint8_t *dev_type)
 {
 	const uint8_t buf[] = "\0\0MCU ISP & WCH.CN";
 	uint8_t ids[2];
@@ -281,13 +322,19 @@ static void isp_cmd_identify(struct isp_dev *dev, uint8_t *dev_id, uint8_t *dev_
 	isp_send_cmd(dev, CMD_IDENTIFY, sizeof(buf) - 1, buf);
 	isp_recv_cmd(dev, CMD_IDENTIFY, sizeof(ids), ids);
 
-	if (dev_id)
-		*dev_id = ids[0];
-	if (dev_type)
-		*dev_type = ids[1];
+	dev->id = ids[0];
+	printf("dev_id = %x\n", dev->id);
+	dev->type = ids[1];
+	printf("dev_type = %x\n", dev->type);
 }
 
-static void
+void isp_cmd_identify_glob()
+{
+	isp_cmd_identify(&glob_dev, &(glob_dev.id), &(glob_dev.type));
+}
+
+
+void
 isp_cmd_isp_key(struct isp_dev *dev, size_t len, uint8_t *key, uint8_t *sum)
 {
 	uint8_t rsp[2];
@@ -298,7 +345,7 @@ isp_cmd_isp_key(struct isp_dev *dev, size_t len, uint8_t *key, uint8_t *sum)
 		*sum = rsp[0];
 }
 
-static void
+void
 isp_cmd_isp_end(struct isp_dev *dev, uint8_t reason)
 {
 	uint8_t buf[2];
@@ -307,7 +354,7 @@ isp_cmd_isp_end(struct isp_dev *dev, uint8_t reason)
 	isp_recv_cmd(dev, CMD_ISP_END, sizeof(buf), buf);
 }
 
-static void
+void
 isp_cmd_erase(struct isp_dev *dev, uint32_t sectors)
 {
 	uint8_t sec[4];
@@ -325,7 +372,7 @@ isp_cmd_erase(struct isp_dev *dev, uint32_t sectors)
 		die("Fail to erase, error: %.2x %.2x\n", rsp[0], rsp[1]);
 }
 
-static size_t
+size_t
 isp_cmd_program(struct isp_dev *dev, uint32_t addr, size_t len, const uint8_t *data, const uint8_t key[8])
 {
 	uint8_t unk[61];
@@ -351,7 +398,7 @@ isp_cmd_program(struct isp_dev *dev, uint32_t addr, size_t len, const uint8_t *d
 	return len;
 }
 
-static size_t
+size_t
 isp_cmd_verify(struct isp_dev *dev, uint32_t addr, size_t len, const uint8_t *data, const uint8_t key[8])
 {
 	uint8_t unk[61];
@@ -377,7 +424,7 @@ isp_cmd_verify(struct isp_dev *dev, uint32_t addr, size_t len, const uint8_t *da
 	return len;
 }
 
-static size_t
+size_t
 isp_cmd_read_conf(struct isp_dev *dev, uint16_t cfgmask, size_t len, uint8_t *cfg)
 {
 	uint8_t buf[60];
@@ -401,7 +448,7 @@ isp_cmd_read_conf(struct isp_dev *dev, uint16_t cfgmask, size_t len, uint8_t *cf
 	return len;
 }
 
-static void
+void
 isp_cmd_write_conf(struct isp_dev *dev, uint16_t cfgmask, size_t len, uint8_t *cfg)
 {
 	uint8_t req[60];
@@ -417,7 +464,7 @@ isp_cmd_write_conf(struct isp_dev *dev, uint16_t cfgmask, size_t len, uint8_t *c
 	isp_recv_cmd(dev, CMD_WRITE_CONFIG, sizeof(rsp), rsp);
 }
 
-static uint16_t read_btver(struct isp_dev *dev)
+uint16_t read_btver(struct isp_dev *dev)
 {
 	uint8_t buf[4];
 	size_t len;
@@ -496,7 +543,7 @@ isp_init_from_db(struct isp_dev *dev)
 	}
 }
 
-static void
+void
 isp_init(struct isp_dev *dev)
 {
 	size_t i;
@@ -517,7 +564,7 @@ isp_init(struct isp_dev *dev)
 	}
 }
 
-static void
+void
 isp_key_init(struct isp_dev *dev)
 {
 	size_t i;
@@ -547,7 +594,7 @@ isp_key_init(struct isp_dev *dev)
 		die("failed set isp key, wrong reply, got %x (exp %x)\n", rsp, sum);
 }
 
-static void
+void
 progress_bar(const char *act, size_t current, size_t total)
 {
 	const char *f = "####################################################";
@@ -565,7 +612,7 @@ progress_bar(const char *act, size_t current, size_t total)
 }
 
 static void
-isp_flash(struct isp_dev *dev, size_t size, uint8_t *data)
+isp_flash(struct isp_dev *dev, size_t size, const uint8_t *data)
 {
 	size_t sector_size = db_flash_sector_size(dev);
 	uint32_t nr_sectors = ALIGN(size, sector_size) / sector_size;
@@ -576,41 +623,41 @@ isp_flash(struct isp_dev *dev, size_t size, uint8_t *data)
 	isp_cmd_erase(dev, nr_sectors);
 
 	while (off < size) {
-		progress_bar("write", off, size);
+		//progress_bar("write", off, size);
 
 		len = isp_cmd_program(dev, off, rem, data + off, dev->xor_key);
 		off += len;
 		rem -= len;
 	}
 	isp_cmd_program(dev, off, 0, NULL, dev->xor_key);
-	progress_bar("write", size, size);
+	//progress_bar("write", size, size);
 }
 
-static void
-isp_verify(struct isp_dev *dev, size_t size, uint8_t *data)
+void
+isp_verify(struct isp_dev *dev, size_t size, const uint8_t *data)
 {
 	size_t off = 0;
 	size_t rem = size;
 	size_t len;
 
 	while (off < size) {
-		progress_bar("verify", off, size);
+		//progress_bar("verify", off, size);
 
 		len = isp_cmd_verify(dev, off, rem, data + off, dev->xor_key);
 		off += len;
 		rem -= len;
 	}
-	progress_bar("verify", size, size);
+	//progress_bar("verify", size, size);
 }
 
-static void
+void
 isp_fini(struct isp_dev *dev)
 {
 	if (do_reset)
 		isp_cmd_isp_end(dev, 1);
 }
 
-static void
+void
 file_read_all(const char *name, size_t *size_p, void **bin_p)
 {
 	FILE *f;
@@ -649,7 +696,7 @@ file_read_all(const char *name, size_t *size_p, void **bin_p)
 	*bin_p = bin;
 }
 
-static void cmd_write_flash_bin(uint8_t* bin, size_t size)
+void cmd_write_flash_bin(const uint8_t* bin, size_t size)
 {
 	const char *name;
 
@@ -657,20 +704,21 @@ static void cmd_write_flash_bin(uint8_t* bin, size_t size)
 		printf("bin_data too big, flash size is\n");
 
 	isp_flash(&glob_dev, size, bin);
+	isp_key_init(&glob_dev);
 	if (do_verify)
 		isp_verify(&glob_dev, size, bin);
 
 	//free(bin);
 }
 
-static 
+ 
 void cmd_write_flash(struct isp_dev *dev, int argc, char **argv)
 {
 
 	//free(bin);
 }
 
-static void cmd_verify_flash_bin(uint8_t* bin, size_t size)
+ void cmd_verify_flash_bin(const uint8_t* bin, size_t size)
 {
 	if (size > db_flash_size(&glob_dev))
 		die("bin flash too big, flash size is %zd\n", db_flash_size(&glob_dev));
@@ -680,7 +728,7 @@ static void cmd_verify_flash_bin(uint8_t* bin, size_t size)
 	//free(bin);
 }
 
-static 
+ 
 void cmd_verify_flash(struct isp_dev *dev, int argc, char **argv)
 {
 
@@ -710,7 +758,7 @@ fmtb(char *b, size_t n, int p, uint32_t v)
 	return s;
 }
 
-static void
+void
 cmd_config_show(struct isp_dev *dev, __unused int argc, __unused char **argv)
 {
 	const struct userconf_reg *cfg_reg = NULL;
@@ -967,7 +1015,31 @@ cmd_remove_wp(struct isp_dev *dev, __unused int argc, __unused char **argv)
 }
 
 static void
+cmd_remove_wp_bin(struct isp_dev *dev)
+{
+	uint8_t cfg[16];
+	size_t len;
+
+	len = isp_cmd_read_conf(dev, CFG_MASK_USERCONF, sizeof(cfg), cfg);
+	if (cfg[0] == 0xa5) {
+		printf("write protection already off\n");
+	} else {
+		cfg[0] = 0xa5;
+		isp_cmd_write_conf(dev, CFG_MASK_USERCONF, len, cfg);
+		printf("write protection disabled\n");
+	}
+}
+
+static void
 cmd_erase_all(struct isp_dev *dev, __unused int argc, __unused char **argv)
+{
+	size_t size = db_flash_size(dev);
+	size_t sector_size = db_flash_sector_size(dev);
+	uint32_t nr_sectors = size / sector_size;
+	isp_cmd_erase(dev, nr_sectors);
+}
+
+static void cmd_erase_all_bin(struct isp_dev *dev)
 {
 	size_t size = db_flash_size(dev);
 	size_t sector_size = db_flash_sector_size(dev);
@@ -1176,6 +1248,23 @@ main_wchisp(int argc, char **argv)
 	isp_fini(dev);
 out:
 	//usb_fini();
+
+	return 0;
+}
+
+
+int program_wchisp_algo()
+{
+	printf("\n");
+	isp_cmd_identify_glob();
+	isp_init(&glob_dev);
+	isp_key_init(&glob_dev);
+	//isp_cmd_erase(&glob_dev, 500);
+	//cmd_erase_all_bin(&glob_dev);
+	cmd_remove_wp_bin(&glob_dev);
+	//isp_fini(&glob_dev);
+	print_dev(&glob_dev);
+	printf("\n");
 
 	return 0;
 }
