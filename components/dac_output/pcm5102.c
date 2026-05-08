@@ -5,23 +5,43 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
 #include "driver/i2s_std.h"
 
 
+uint16_t i2s_buffer[512]; // buffer for DAC
+
+void init_i2s_dac();
+
 void initDAC()
 {
-
+    init_i2s_dac()
 }
 
 void writeBuffer(uint16_t* data, uint16_t length)
 {
+    for (int n = 0; n < 256; n++) 
+    {
+        i2s_buffer[n * 2]     = data[n]; // Канал I (Left)
+        i2s_buffer[n * 2 + 1] = data[n+1]; // Канал Q (Right)
+    }
+}
 
+void writeBufferComplex(const double complex* data, uint16_t length)
+{
+    for (int n = 0; n < 256; n++) 
+    {
+        i2s_buffer[n * 2]     = (uint16_t) creal(data[i]); // Канал I (Left)
+        i2s_buffer[n * 2 + 1] = (uint16_t) cimag(data[i]); // Канал Q (Right)
+    }
 }
 
 void writezeroDAC()
 {
-    
+    for (int n = 0; n < 256; n++) 
+    {
+        i2s_buffer[n * 2]     = (uint16_t) 0; // Канал I (Left)
+        i2s_buffer[n * 2 + 1] = (uint16_t) 0; // Канал Q (Right)
+    }
 }
 
 
@@ -60,7 +80,6 @@ void prepare_sine_table()
 
 void play_iq_test_tone(i2s_chan_handle_t tx_handle) 
 {
-    int16_t i2s_buffer[512]; // Буфер для одной итерации (256 семплов стерео)
     uint32_t phase_i = 0;
     uint32_t phase_q = SINE_LUT_SIZE / 4; // Сдвиг 90 градусов (Косинус)
     

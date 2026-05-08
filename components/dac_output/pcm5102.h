@@ -2,10 +2,12 @@
 #define DAC_OUT_PCM5102
 
 #include "stdint.h"
+#include "complex.h"
 
 
 void initDAC();
 void writeBuffer(uint16_t* data, uint16_t length);
+void writeBufferComplex(const double complex* data, uint16_t length);
 void writezeroDAC();
 
 #endif //DAC_OUT_PCM5102
