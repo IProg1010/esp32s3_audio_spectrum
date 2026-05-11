@@ -5,6 +5,7 @@
 #include "driver/gpio.h"
 #include "driver/uart.h"
 #include "esp_log.h"
+#include "input_manager.h"
 
 #define CH32_BOOT0_PIN  GPIO_NUM_10
 #define CH32_RST_PIN    GPIO_NUM_9
@@ -19,7 +20,8 @@ static const char *TAG = "WCH_ISP";
 void slave_control_enter_bootloader();
 void flash_slave_controller(); 
 esp_err_t flash_firmware(const uint8_t* data, size_t size);
-
+QueueHandle_t queue_enc1;
+QueueHandle_t queue_enc2;
 
 extern const uint8_t bin_start[] asm("_binary_flash_slave_bin_start");
 extern const uint8_t bin_end[]   asm("_binary_flash_slave_bin_end");
@@ -56,7 +58,30 @@ void find_slave_controller_firmware()
     //flash_firmware((const uint8_t*) bin_start, bin_size);
 }
 
-void init_uart() 
+void init_uart_for_isp() 
+{
+    const uart_config_t uart_config = {
+        .baud_rate = 115200,            // Стандарт для WCH ISP
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_DEFAULT,
+    };
+
+    // Установка пинов (TX, RX, RTS, CTS)
+    ESP_ERROR_CHECK(uart_set_pin(UART_PORT_NUM, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+
+    // Установка параметров
+    ESP_ERROR_CHECK(uart_param_config(UART_PORT_NUM, &uart_config));
+
+
+    // Установка драйвера (выделяем буфер под прием данных)
+    ESP_ERROR_CHECK(uart_driver_install(UART_PORT_NUM, BUF_SIZE * 2, 0, 0, NULL, 0));
+}
+
+
+void init_uart_for_proto() 
 {
     const uart_config_t uart_config = {
         .baud_rate = 115200,            // Стандарт для WCH ISP
@@ -105,7 +130,7 @@ void initSlave()
     find_slave_controller_firmware();
     vTaskDelay(pdMS_TO_TICKS(1000));    // Пауза на запуск*/
 
-    init_uart();
+    init_uart_for_isp();
     vTaskDelay(pdMS_TO_TICKS(1000));    // Пауза на запуск
     slave_control_enter_bootloader();
     vTaskDelay(pdMS_TO_TICKS(500));    // Пауза на запуск
@@ -121,7 +146,16 @@ void initSlave()
     cmd_write_flash_bin((const uint8_t*) bin_start, bin_size);
     printf("program ok\n");
     vTaskDelay(pdMS_TO_TICKS(500));    // Пауза на запуск
+
+    uart_driver_delete(UART_PORT_NUM);
+
     slave_control_enter_app();
+    vTaskDelay(pdMS_TO_TICKS(500)); 
+
+    init_uart_for_proto();
+
+    queue_enc1 = get_input_queue_enc1();
+    queue_enc2 = get_input_queue_enc2();
 }
 
 void writeToSlave()
@@ -131,5 +165,27 @@ void writeToSlave()
 
 void readFromSlave()
 {
+    uint8_t buff[20];
+    size_t size = 20;
+    int len = uart_read_bytes(UART_PORT_NUM, buff, size, pdMS_TO_TICKS(240));
+    printf("data:");
+    for(int i = 0; i < len; i++)
+    {
+        printf("%c", buff[i]);
+    }
+    printf("\n");
 
+    if(len != 0)
+    {
+        input_event_t event;
+        
+        // Твоя логика из начала разговора:
+        if(buff[0] == 'v') 
+            if(buff[6] == '-') event = ENC_DOWN;
+            else event = ENC_UP;
+        else if(buff[0] == 'p') event = ENC_PUSH;
+        else if(buff[0] == 'r') event = ENC_RELEASE;
+        
+        xQueueSend(queue_enc1, &event, 0);
+    }
 }

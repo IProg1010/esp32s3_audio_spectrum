@@ -14,7 +14,7 @@ void init_i2s_dac();
 
 void initDAC()
 {
-    init_i2s_dac()
+    init_i2s_dac();
 }
 
 void writeBuffer(uint16_t* data, uint16_t length)
@@ -30,8 +30,8 @@ void writeBufferComplex(const double complex* data, uint16_t length)
 {
     for (int n = 0; n < 256; n++) 
     {
-        i2s_buffer[n * 2]     = (uint16_t) creal(data[i]); // Канал I (Left)
-        i2s_buffer[n * 2 + 1] = (uint16_t) cimag(data[i]); // Канал Q (Right)
+        i2s_buffer[n * 2]     = (uint16_t) creal(data[n]); // Канал I (Left)
+        i2s_buffer[n * 2 + 1] = (uint16_t) cimag(data[n]); // Канал Q (Right)
     }
 }
 

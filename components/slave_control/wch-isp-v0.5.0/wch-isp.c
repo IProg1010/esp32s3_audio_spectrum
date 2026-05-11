@@ -378,6 +378,8 @@ isp_cmd_program(struct isp_dev *dev, uint32_t addr, size_t len, const uint8_t *d
 	uint8_t unk[61];
 	uint8_t rsp[2];
 	size_t i;
+	uint8_t repeat_cnt = 0; 
+	bool flag = false;
 
 	unk[0] = (addr >>  0) & 0xff;
 	unk[1] = (addr >>  8) & 0xff;
@@ -388,13 +390,20 @@ isp_cmd_program(struct isp_dev *dev, uint32_t addr, size_t len, const uint8_t *d
 	len = MIN(sizeof(unk) - 5, len);
 	for (i = 0; i < len; i++)
 		unk[5 + i] = data[i] ^ key[i % 8];
+	do
+	{
+		flag = false;
+		isp_send_cmd(dev, CMD_PROGRAM, len + 5, unk);
+		isp_recv_cmd(dev, CMD_PROGRAM, sizeof(rsp), rsp);
 
-	isp_send_cmd(dev, CMD_PROGRAM, len + 5, unk);
-	isp_recv_cmd(dev, CMD_PROGRAM, sizeof(rsp), rsp);
-
-	if (rsp[0] != 0 || rsp[1] != 0)
-		die("Fail to program chunk @ %#x error: %.2x %.2x\n", addr, rsp[0], rsp[1]);
-
+		if (rsp[0] != 0 || rsp[1] != 0)
+		{
+			die("Fail to program chunk @ %#x error: %.2x %.2x\n", addr, rsp[0], rsp[1]);
+			flag = true;	
+		}
+		repeat_cnt++;
+	}
+	while(repeat_cnt < 3 && flag);
 	return len;
 }
 
@@ -404,6 +413,8 @@ isp_cmd_verify(struct isp_dev *dev, uint32_t addr, size_t len, const uint8_t *da
 	uint8_t unk[61];
 	uint8_t rsp[2];
 	size_t i;
+	uint8_t repeat_cnt = 0; 
+	bool flag = false;
 
 	unk[0] = (addr >>  0) & 0xff;
 	unk[1] = (addr >>  8) & 0xff;
@@ -414,12 +425,20 @@ isp_cmd_verify(struct isp_dev *dev, uint32_t addr, size_t len, const uint8_t *da
 	len = MIN(sizeof(unk) - 5, len);
 	for (i = 0; i < len; i++)
 		unk[5 + i] = data[i] ^ key[i % 8];
+	do
+	{
+		flag = false;
+		isp_send_cmd(dev, CMD_VERIFY, len + 5, unk);
+		isp_recv_cmd(dev, CMD_VERIFY, sizeof(rsp), rsp);
 
-	isp_send_cmd(dev, CMD_VERIFY, len + 5, unk);
-	isp_recv_cmd(dev, CMD_VERIFY, sizeof(rsp), rsp);
-
-	if (rsp[0] != 0 || rsp[1] != 0)
-		die("Fail to verify chunk @ %#x error: %.2x %.2x\n", addr, rsp[0], rsp[1]);
+		if (rsp[0] != 0 || rsp[1] != 0)
+		{
+			die("Fail to verify chunk @ %#x error: %.2x %.2x\n", addr, rsp[0], rsp[1]);
+			flag = true;	
+		}
+		repeat_cnt++;
+	}
+	while(repeat_cnt < 3 && flag);
 
 	return len;
 }

@@ -38,6 +38,7 @@ set(ch32v203user "User")
 set(SOURC_FILES 
 	${CMAKE_CURRENT_SOURCE_DIR}/main.c
 	${CMAKE_CURRENT_SOURCE_DIR}/delay.c
+	${CMAKE_CURRENT_SOURCE_DIR}/timer.c
 	${CMAKE_CURRENT_SOURCE_DIR}/gpio/di_do_control.c
 	${CMAKE_CURRENT_SOURCE_DIR}/gpio/encoder.c
 

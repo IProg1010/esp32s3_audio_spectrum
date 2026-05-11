@@ -12,8 +12,29 @@
 
 #include "esp_lvgl_port.h"
 
+#include "main.h"
+#include "welcome.h"
+
+#include "input_manager.h"
+
 #define LCD_H_RES 240
 #define LCD_V_RES 320
+
+/*Сигналы дисплея:
+D0	GPIO 39	Шина данных (Bit 0)
+D1	GPIO 40	Шина данных (Bit 1)
+D2	GPIO 41	Шина данных (Bit 2)
+D3	GPIO 42	Шина данных (Bit 3)
+D4	GPIO 45	Шина данных (Bit 4)
+D5	GPIO 46	Шина данных (Bit 5)
+D6	GPIO 47	Шина данных (Bit 6)
+D7	GPIO 48	Шина данных (Bit 7)
+WR (Write Clock)	GPIO 4	Строб записи
+RD (Read)	GPIO 5	Чтение (или подтяни к 3.3V, если не читаешь)
+DC (RS)	GPIO 6	Команда / Данные
+CS	GPIO 7	Выбор чипа
+RST	GPIO 15	Сброс
+*/
 
 // display pin according to the diagram 
 #define LCD_D0 39
@@ -193,10 +214,11 @@ void init_ili9486()
     lv_indev_set_read_cb(enc_indev, encoder_read_cb);      // Назначаем ваш callback
     lv_indev_set_display(enc_indev, disp);                 // Привязываем к дисплею
 
-    //lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565_SWAPPED);
+    lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565_SWAPPED);
     //lv_display_set_render_mode(disp, LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_90); // Или 180, 270
 
+    input_manager_init();
     lvgl_port_lock(50);
 
     // 1. Создаем группу
@@ -226,7 +248,7 @@ void init_ili9486()
     lv_obj_center(label2);
 
     lvgl_port_unlock();
-
+    /*
     lvgl_port_lock(50);
 
     // 1. Создаем дугу
@@ -251,10 +273,23 @@ void init_ili9486()
     // В LVGL 9 это можно сделать через обновление координат в callback
     // Но проще всего добавить стиль "вращения" текста
 
-    lvgl_port_unlock();
+    lvgl_port_unlock();*/
+
+    welcome_screen_init(); // Создаем экран приветствия
+    lv_scr_load(welcome_screen); // Показываем приветствие
 }
 
 
+void set_main_screen()
+{
+
+    lv_obj_t * act_scr = lv_scr_act();
+    
+    main_screen_init(); // Создаем экран приветствия
+    lv_scr_load(main_screen); // Показываем приветствие
+
+    if(act_scr) lv_obj_del(act_scr);
+}
 
 void update_ili9486()
 {
