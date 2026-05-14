@@ -17,5 +17,5 @@ void welcome_screen_init(void)
     lv_obj_t * label = lv_label_create(welcome_screen);
     
     lv_obj_add_style(label, &style_text, 0);    
-    lv_label_set_text(label, "Hello brother");
+    lv_label_set_text(label, "Hello Batyrshin Ilnaz");
 }    
